@@ -40,40 +40,32 @@ def fecha_valida(s):
 
 
 def solve():
-
     read = sys.stdin.buffer.readline
 
     intervalo = read().split()
-
     if len(intervalo) != 2:
         return
 
     fecha_inicio, fecha_fin = intervalo
-
     n = int(read())
 
-    # Control de identificadores de venta.
+    # Un byte por identificador: memoria compacta para deduplicar.
     usados = bytearray(MAX_VENTA + 1)
 
-    # Acumulación de ventas por producto.
+    # Acumulación directa por identificador de producto.
     ventas = [0] * (MAX_PRODUCTO + 1)
 
-    # Procesamiento de registros.
     for _ in range(n):
-
         linea = read()
-
         if not linea:
             continue
 
         campos = linea.rstrip(b"\r\n").split(b",")
-
         if len(campos) != 4:
             continue
 
         fecha, id_venta, id_producto, cantidad = campos
 
-        # Validación de fecha.
         if not fecha_valida(fecha):
             continue
 
@@ -81,102 +73,67 @@ def solve():
             id_venta = int(id_venta)
             id_producto = int(id_producto)
             cantidad = int(cantidad)
-
         except ValueError:
             continue
 
-        # Validación de identificadores.
         if not (1 <= id_venta <= MAX_VENTA):
             continue
-
         if not (1 <= id_producto <= MAX_PRODUCTO):
             continue
 
-        # La primera aparición válida reserva el ID.
-        # Incluso si está fuera del intervalo.
-
+        # La primera aparición válida reserva el ID, incluso si
+        # su fecha queda fuera del intervalo consultado.
         if usados[id_venta]:
             continue
-
         usados[id_venta] = 1
 
-        # Filtro de fechas inclusivo.
+        # Comparación lexicográfica válida para fechas ISO YYYY-MM-DD.
         if fecha < fecha_inicio or fecha > fecha_fin:
             continue
 
-        # Acumulación de cantidades.
         ventas[id_producto] += cantidad
 
-    # Selección de los tres mejores productos.
-    mejor1_id = 0
-    mejor2_id = 0
-    mejor3_id = 0
-
-    mejor1_total = 0
-    mejor2_total = 0
-    mejor3_total = 0
+    # Mantener únicamente los tres mejores: total descendente,
+    # y en empate, identificador de producto ascendente.
+    mejor1_id = mejor2_id = mejor3_id = 0
+    mejor1_total = mejor2_total = mejor3_total = 0
 
     for producto in range(1, MAX_PRODUCTO + 1):
-
         total = ventas[producto]
-
         if total <= 0:
             continue
 
-        # Primer lugar.
         if (total > mejor1_total or
-            (total == mejor1_total and
-             (mejor1_id == 0 or producto < mejor1_id))):
+                (total == mejor1_total and
+                 (mejor1_id == 0 or producto < mejor1_id))):
+            mejor3_id, mejor3_total = mejor2_id, mejor2_total
+            mejor2_id, mejor2_total = mejor1_id, mejor1_total
+            mejor1_id, mejor1_total = producto, total
 
-            mejor3_id = mejor2_id
-            mejor3_total = mejor2_total
-
-            mejor2_id = mejor1_id
-            mejor2_total = mejor1_total
-
-            mejor1_id = producto
-            mejor1_total = total
-
-        # Segundo lugar.
         elif (total > mejor2_total or
-              (total == mejor2_total and
-               (mejor2_id == 0 or producto < mejor2_id))):
+                (total == mejor2_total and
+                 (mejor2_id == 0 or producto < mejor2_id))):
+            mejor3_id, mejor3_total = mejor2_id, mejor2_total
+            mejor2_id, mejor2_total = producto, total
 
-            mejor3_id = mejor2_id
-            mejor3_total = mejor2_total
-
-            mejor2_id = producto
-            mejor2_total = total
-
-        # Tercer lugar.
         elif (total > mejor3_total or
-              (total == mejor3_total and
-               (mejor3_id == 0 or producto < mejor3_id))):
+                (total == mejor3_total and
+                 (mejor3_id == 0 or producto < mejor3_id))):
+            mejor3_id, mejor3_total = producto, total
 
-            mejor3_id = producto
-            mejor3_total = total
-
-    # Construcción de salida.
     if mejor1_id == 0:
         sys.stdout.write("SIN DATOS\n")
         return
 
-    resultado = [
-        f"{mejor1_id} {mejor1_total}"
-    ]
-
+    resultado = [f"{mejor1_id} {mejor1_total}"]
     if mejor2_id:
-        resultado.append(
-            f"{mejor2_id} {mejor2_total}"
-        )
-
+        resultado.append(f"{mejor2_id} {mejor2_total}")
     if mejor3_id:
-        resultado.append(
-            f"{mejor3_id} {mejor3_total}"
-        )
+        resultado.append(f"{mejor3_id} {mejor3_total}")
 
     sys.stdout.write("\n".join(resultado) + "\n")
 
 
 if __name__ == "__main__":
     solve()
+
